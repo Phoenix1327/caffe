@@ -391,6 +391,25 @@ class HingeLossLayer : public LossLayer<Dtype> {
       const vector<bool>& propagate_down, vector<Blob<Dtype>*>* bottom);
 };
 
+template <typename Dtype>
+class SemiLossLayer : public LossLayer<Dtype> {
+	public:
+	 explicit SemiLossLayer(const LayerParameter& param)
+	     : LossLayer<Dtype>(param) {}
+	 
+	 virtual inline LayerParameter_LayerType type() const {
+	   return LayerParameter_LayerType_SEMI_LOSS;
+	 }
+	 
+	 protected:
+	 /// @copydoc SemiLossLayer
+	 virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
+	     vector<Blob<Dtype>*>* top);
+		 
+	 virtual void Backward_cpu(const vector<Blob<Dtype>*>& top,
+         const vector<bool>& propagate_down, vector<Blob<Dtype>*>* bottom);
+};
+
 /**
  * @brief A generalization of MultinomialLogisticLossLayer that takes an
  *        "information gain" (infogain) matrix specifying the "value" of all label
@@ -766,3 +785,4 @@ class SoftmaxWithLossLayer : public LossLayer<Dtype> {
 }  // namespace caffe
 
 #endif  // CAFFE_LOSS_LAYERS_HPP_
+
