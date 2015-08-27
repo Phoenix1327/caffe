@@ -394,8 +394,17 @@ class HingeLossLayer : public LossLayer<Dtype> {
 template <typename Dtype>
 class SemiLossLayer : public LossLayer<Dtype> {
 	public:
+	 /**
+	  * @param param provides SemiLossParameter semi_loss_param,
+      *     with SemiLossLayer options:
+      *   -	alpha (\b optional, default 1) the loss weight on positive data
+      *   - beta  (\b optional, default 1) the loss weight on negative data
+      *   - gamma (\b optional, default 1) the loss weight on weakly data	  
+	  */
 	 explicit SemiLossLayer(const LayerParameter& param)
 	     : LossLayer<Dtype>(param) {}
+	 virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
+	     vector<Blob<Dtype>*>* top);
 	 
 	 virtual inline LayerParameter_LayerType type() const {
 	   return LayerParameter_LayerType_SEMI_LOSS;
@@ -408,6 +417,16 @@ class SemiLossLayer : public LossLayer<Dtype> {
 		 
 	 virtual void Backward_cpu(const vector<Blob<Dtype>*>& top,
          const vector<bool>& propagate_down, vector<Blob<Dtype>*>* bottom);
+		 
+	 Dtype alpha_;
+	 Dtype beta_;
+	 Dtype gamma_;
+	 Blob<Dtype> positive_weights_;
+	 Blob<Dtype> negative_weights_;
+	 Blob<Dtype> weakly_weights_;
+	 Dtype num_p;
+	 Dtype num_n;
+	 Dtype num_w;
 };
 
 /**
