@@ -501,20 +501,14 @@ message HingeLossParameter {
 
 // Message that stores parameters used by SemiLossLayer
 message SemiLossParameter {
-  enum Norm {
-    L1 = 1;
-    L2 = 2;
-  }
-  // Specify the Norm to use L1 or L2
-  optional Norm norm = 1 [default = L1];
-  
+
   // alpha: loss weight on positive(p) data
   // beta: loss weight on negative(n) data
   // gamma: loss weight on weakly(w) data
   // final loss = alpha * LOSSp + beta * LOSSn + gamma * LOSSw 
-  optional float alpha = 3 [default = 1.0];
-  optional float beta = 4 [default = 1.0];
-  optional float gamma = 5 [default = 1.0];
+  optional float alpha = 1 [default = 1.0];
+  optional float beta = 2 [default = 1.0];
+  optional float gamma = 3 [default = 1.0];
 }
 
 // Message that stores parameters used by ImageDataLayer

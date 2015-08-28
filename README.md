@@ -20,3 +20,13 @@
 #L_negative = (x1^2 + x2^2 + ... + xnn^2) / Nn
 #L_weakly = (x1^2 + x2^2 + ... + xnw^2) / Nw
 #L = alpha * L_positive + beta * L_negative + gamma * L_weakly
+
+#edition 3
+#remove L1 norm and L2 norm
+#L_positive = (fp1 + fp2 + ... + fpnp) / Np
+#L_negative = (fn1 + fn2 + ... + fnnn) / Nn
+#L_weakly = (fw1 + fw2 + ... + fwnw) / Nw
+#fp(x) = -log(sigmoid(x))
+#fn(x) = -log(sigmoid(-x))
+#fw(x) = -log(sigmoid(max(x)))
+#L = alpha * L_positive + beta * L_negative + gamma * L_weakly

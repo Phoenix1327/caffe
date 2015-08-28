@@ -21,29 +21,45 @@ class SemiLossLayerTest : public MultiDeviceTest<TypeParam> {
 
  protected:
   SemiLossLayerTest()
-      : blob_bottom_data_(new Blob<Dtype>(10, 1, 1, 1)),
-        blob_bottom_label_(new Blob<Dtype>(10, 1, 1, 1)),
+      : blob_bottom_data_(new Blob<Dtype>(15, 1, 1, 1)),
+        blob_bottom_clabel_(new Blob<Dtype>(15, 1, 1, 1)),
+		blob_bottom_wlabel_(new Blob<Dtype>(15, 1, 1, 1)),
         blob_top_loss_(new Blob<Dtype>()) {
     // fill the values
     Caffe::set_random_seed(1701);
     FillerParameter filler_param;
-    filler_param.set_std(10);
+    filler_param.set_std(15);
     GaussianFiller<Dtype> filler(filler_param);
     filler.Fill(this->blob_bottom_data_);
     blob_bottom_vec_.push_back(blob_bottom_data_);
-    for (int i = 0; i < blob_bottom_label_->count(); ++i) {
-      blob_bottom_label_->mutable_cpu_data()[i] = caffe_rng_rand() % 3 - 1;//-1 , 0 or 1
+    for (int i = 0; i < 5; ++i) {
+      blob_bottom_clabel_->mutable_cpu_data()[i] = (caffe_rng_rand() % 2) * 2 - 1;//-1 or 1,positive or negative
     }
-    blob_bottom_vec_.push_back(blob_bottom_label_);
+	for (int i =0; i < 5; ++i) {
+	  blob_bottom_wlabel_->mutable_cpu_data()[i] = -1;
+	}
+	for (int i = 5; i < 15; ++i) {
+      blob_bottom_clabel_->mutable_cpu_data()[i] = 0;//weakly bags
+    }
+	for (int i = 5; i < 10; ++i) {
+      blob_bottom_wlabel_->mutable_cpu_data()[i] = 0;//weakly bag, img idx = 0
+    }
+	for (int i = 10; i < 15; ++i) {
+      blob_bottom_wlabel_->mutable_cpu_data()[i] = 1;//weakly bag, img idx = 1
+    }
+    blob_bottom_vec_.push_back(blob_bottom_clabel_);
+	blob_bottom_vec_.push_back(blob_bottom_wlabel_);
     blob_top_vec_.push_back(blob_top_loss_);
   }
   virtual ~SemiLossLayerTest() {
     delete blob_bottom_data_;
-    delete blob_bottom_label_;
+    delete blob_bottom_clabel_;
+	delete blob_bottom_wlabel_;
     delete blob_top_loss_;
   }
   Blob<Dtype>* const blob_bottom_data_;
-  Blob<Dtype>* const blob_bottom_label_;
+  Blob<Dtype>* const blob_bottom_clabel_;
+  Blob<Dtype>* const blob_bottom_wlabel_;
   Blob<Dtype>* const blob_top_loss_;
   vector<Blob<Dtype>*> blob_bottom_vec_;
   vector<Blob<Dtype>*> blob_top_vec_;
@@ -61,16 +77,5 @@ TYPED_TEST(SemiLossLayerTest, TestGradientL1) {
       &(this->blob_top_vec_), 0);
 }
 
-TYPED_TEST(SemiLossLayerTest, TestGradientL2) {
-  typedef typename TypeParam::Dtype Dtype;
-  LayerParameter layer_param;
-  // Set norm to L2
-  SemiLossParameter* semi_loss_param = layer_param.mutable_semi_loss_param();
-  semi_loss_param->set_norm(SemiLossParameter_Norm_L2);
-  SemiLossLayer<Dtype> layer(layer_param);
-  GradientChecker<Dtype> checker(1e-2, 1e-2, 1701);
-  checker.CheckGradientExhaustive(&layer, &(this->blob_bottom_vec_),
-      &(this->blob_top_vec_), 0);
-}
 
 }  // namespace caffe
