@@ -15,16 +15,12 @@ void SemiLossLayer<Dtype>::LayerSetUp(
   const vector<Blob<Dtype>*>& bottom, vector<Blob<Dtype>*>* top) {
   LossLayer<Dtype>::LayerSetUp(bottom, top);
   CHECK_EQ(bottom[0]->num(), bottom[1]->num());
-  CHECK_EQ(bottom[1]->num(), bottom[2]->num());
   CHECK_EQ(bottom[0]->channels(), 1);
   CHECK_EQ(bottom[1]->channels(), 1);
-  CHECK_EQ(bottom[2]->channels(), 1);
   CHECK_EQ(bottom[0]->height(), 1);
   CHECK_EQ(bottom[0]->width(), 1);
   CHECK_EQ(bottom[1]->height(), 1);
   CHECK_EQ(bottom[1]->width(), 1);
-  CHECK_EQ(bottom[2]->height(), 1);
-  CHECK_EQ(bottom[2]->width(), 1);
   
   alpha_ = this->layer_param_.semi_loss_param().alpha();
   beta_ = this->layer_param_.semi_loss_param().beta();
@@ -43,8 +39,7 @@ void SemiLossLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     vector<Blob<Dtype>*>* top) {
   const Dtype* bottom_data = bottom[0]->cpu_data();
   Dtype* bottom_diff = bottom[0]->mutable_cpu_diff();
-  const Dtype* clabel = bottom[1]->cpu_data();//-1(negative);0(weakly);1(positive)
-  const Dtype* wlabel = bottom[2]->cpu_data();//-1(pos & neg);0,1,2,3...(weakly bag idx)
+  const Dtype* label = bottom[1]->cpu_data();//-2(negative);-1(positive);0,1,2,3,...(weakly bags idx)
   
   Dtype* pw = positive_weights_.mutable_cpu_data();
   Dtype* nw = negative_weights_.mutable_cpu_data();
@@ -71,21 +66,34 @@ void SemiLossLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   float loss_w = 0;
   for (int i = 0; i < num; ++i) {
 	
-	//positive/negative
-	if (clabel[i] == Dtype(1)) {
+	//positive
+	if (label[i] == Dtype(-1)) {
 	  num_int_p += 1;
 	  loss_p += -log(1 / (1 + exp(-bottom_data[i])));
 	  pw[i] = Dtype(1);
       nw[i] = Dtype(0);
+	  // the last sample is the end of a weakly_bag
+	  if (start_count == false) {
+	    ww[max_idx] = Dtype(1);
+		start_count = true;
+		loss_w += -log(1 / (1 + exp(-bottom_data[max_idx])));
+	  }
 	}
-	if (clabel[i] == Dtype(-1)) {
+	//negative
+	if (label[i] == Dtype(-2)) {
 	  num_int_n += 1;
 	  loss_n += -log(1 / (1 + exp(bottom_data[i])));
 	  nw[i] = Dtype(1);
 	  pw[i] = Dtype(0);
+	  // the last sample is the end of a weakly_bag
+	  if (start_count == false) {
+	    ww[max_idx] = Dtype(1);
+		start_count = true;
+		loss_w += -log(1 / (1 + exp(-bottom_data[max_idx])));
+	  }
 	}
 	//weakly_bags
-	if (clabel[i] == Dtype(0)) {
+	if (label[i] >= Dtype(0)) {
 	  //the start of a weakly_bag
 	  if (start_count == true) {
 		num_int_w += 1;
@@ -97,7 +105,7 @@ void SemiLossLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 	  //not start
 	  else {
 		//the end of a weakly_bag, the start of a new weakly_bag
-	    if (wlabel[i] != wlabel[i-1]){
+	    if (label[i] != label[i-1]){
 			ww[max_idx] = Dtype(1);
 			start_count = true;
 			i -= 1;
@@ -143,10 +151,6 @@ void SemiLossLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
   if (propagate_down[1]) {
     LOG(FATAL) << this->type_name()
                << " Layer cannot backpropagate to label inputs.";
-  }
-  if (propagate_down[2]) {
-	LOG(FATAL) << this->type_name()
-	           << " Layer cannot backpropagate to label inputs.";
   }
   if (propagate_down[0]) {
 	const Dtype* bottom_data = (*bottom)[0]->cpu_data();

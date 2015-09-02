@@ -406,10 +406,12 @@ class SemiLossLayer : public LossLayer<Dtype> {
 	 virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
 	     vector<Blob<Dtype>*>* top);
 	 
-	 virtual inline int ExactNumBottomBlobs() const { return 3; }
+	 virtual inline int ExactNumBottomBlobs() const { return 2; }
 	 //bottom[0]:data;
-	 //bottom[1]:class_label;
-     //bottom[2]:weakly_label;	 
+	 //bottom[1]:label;
+     //negative images: -2
+     //positive images: -1
+     //weakly bags: 0,1,2,3,...	 
 	 
 	 virtual inline LayerParameter_LayerType type() const {
 	   return LayerParameter_LayerType_SEMI_LOSS;
