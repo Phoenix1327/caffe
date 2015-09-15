@@ -36,7 +36,7 @@ void SemiAccuracyLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   int num = bottom[0]->num();
   int dim = bottom[0]->count() / bottom[0]->num();
   for (int i = 0; i < num; ++i) {
-    pred = Dtype(-1) ? bottom_data[i] > Dtype(0) : Dtype(-2);
+    pred = bottom_data[i] > Dtype(0) ? Dtype(-1) : Dtype(-2);
     if (pred == bottom_label[i]) {
       ++accuracy;
     }
