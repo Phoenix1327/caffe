@@ -63,6 +63,7 @@ void SemiLossLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   int max_idx = 0;
   float loss_p_single = 0;
   float loss_n_single = 0;
+  float loss_w_single = 0;
   float loss_p = 0;
   float loss_n = 0;
   float loss_w = 0;
@@ -92,7 +93,16 @@ void SemiLossLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       if (start_count == false) {
         ww[max_idx] = Dtype(1);
         start_count = true;
-        loss_w += loss_p_single;
+        if (bottom_data[max_idx] > Dtype(20)) {
+          loss_w_single = 0;
+        }
+        else if (bottom_data[max_idx] < Dtype(-20)) {
+          loss_w_single = -bottom_data[max_idx];
+        }
+        else {
+          loss_w_single = -log(1 / (1 + exp(-bottom_data[max_idx])));
+        }
+        loss_w += loss_w_single;
       }
     }
     //negative
@@ -105,7 +115,18 @@ void SemiLossLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       if (start_count == false) {
         ww[max_idx] = Dtype(1);
         start_count = true;
-        loss_w += loss_p_single;
+        
+        if (bottom_data[max_idx] > Dtype(20)) {
+          loss_w_single = 0;
+        }
+        else if (bottom_data[max_idx] < Dtype(-20)) {
+          loss_w_single = -bottom_data[max_idx];
+        }
+        else {
+          loss_w_single = -log(1 / (1 + exp(-bottom_data[max_idx])));
+        }
+        
+        loss_w += loss_w_single;
       }
     }
     //weakly_bags
@@ -125,13 +146,25 @@ void SemiLossLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
           ww[max_idx] = Dtype(1);
           start_count = true;
           i -= 1;
-          loss_w += loss_p_single;
+          
+          if (bottom_data[max_idx] > Dtype(20)) {
+            loss_w_single = 0;
+          }
+          else if (bottom_data[max_idx] < Dtype(-20)) {
+            loss_w_single = -bottom_data[max_idx];
+          }
+          else {
+            loss_w_single = -log(1 / (1 + exp(-bottom_data[max_idx])));
+          }
+          
+          loss_w += loss_w_single;
+          
           pw[i] = Dtype(0);
           nw[i] = Dtype(0);
         }
         //not end
         else {
-          if (static_cast<float>(bottom_data[i]) >= static_cast<float>(bottom_data[i-1])) {
+          if (bottom_data[i] >= bottom_data[max_idx]) {
             max_idx = i;
           }
           pw[i] = Dtype(0);
@@ -143,23 +176,33 @@ void SemiLossLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   //the end of the data, and the last sample is a weakly_bag
   if (start_count == false) { 
     ww[max_idx] = Dtype(1);
-    loss_w += loss_p_single;
-  
-    num_p = Dtype(num_int_p);
-    num_n = Dtype(num_int_n);
-    num_w = Dtype(num_int_w);
-    if (num_int_p != 0) {
-      loss_p /= num_int_p;
+    
+    if (bottom_data[max_idx] > Dtype(20)) {
+      loss_w_single = 0;
     }
-    if (num_int_n != 0) {
-      loss_n /= num_int_n;
-    }  
-    if (num_int_w != 0) {
-      loss_w /= num_int_w;
+    else if (bottom_data[max_idx] < Dtype(-20)) {
+      loss_w_single = -bottom_data[max_idx];
     }
+    else {
+      loss_w_single = -log(1 / (1 + exp(-bottom_data[max_idx])));
+    }
+    
+    loss_w += loss_w_single;
+  }
+  num_p = Dtype(num_int_p);
+  num_n = Dtype(num_int_n);
+  num_w = Dtype(num_int_w);
+  if (num_int_p != 0) {
+    loss_p /= num_int_p;
+  }
+  if (num_int_n != 0) {
+    loss_n /= num_int_n;
+  }  
+  if (num_int_w != 0) {
+    loss_w /= num_int_w;
   }
   Dtype* loss = (*top)[0]->mutable_cpu_data();
-  loss[0] = loss_p + loss_n + loss_w;    
+  loss[0] = alpha_ * loss_p + beta_ * loss_n + gamma_ * loss_w;    
 }
 
 template <typename Dtype>
@@ -173,7 +216,7 @@ void SemiLossLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     const Dtype* bottom_data = (*bottom)[0]->cpu_data();
     Dtype* bottom_diff = (*bottom)[0]->mutable_cpu_diff();
 	
-	Dtype* pw = positive_weights_.mutable_cpu_data();
+    Dtype* pw = positive_weights_.mutable_cpu_data();
     Dtype* nw = negative_weights_.mutable_cpu_data();
     Dtype* ww = weakly_weights_.mutable_cpu_data();
 	
